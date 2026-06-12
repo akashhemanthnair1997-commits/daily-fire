@@ -1,0 +1,7 @@
+{
+  "name": "daily-fire",
+  "version": "1.0.0",
+  "description": "Twice-daily philosophical essay agent — researched, written, and delivered to your inbox",
+  "type": "module",
+  "engines": { "node": ">=20" }
+}
