@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Daily Fire</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="icon" href="/icon-192.png"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+<meta name="theme-color" content="#0A0A0B"/>
+<style>
+:root{
+  --ink:#0A0A0B; --panel:#16101a; --panel2:#1d141f;
+  --hot:#FF2E88; --deep:#C2185B; --soft:#FF8FC2;
+  --body:#F5E9EF; --faint:#9b8290; --line:#2a1c26;
+}
+html[data-theme="light"]{
+  --ink:#FBF4F7; --panel:#ffffff; --panel2:#fdeef4;
+  --hot:#D8126E; --deep:#C2185B; --soft:#A8336B;
+  --body:#241019; --faint:#8a6a78; --line:#f0d4e1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--body);font-family:Georgia,'Times New Roman',serif;min-height:100vh;transition:background .3s,color .3s}
+.top{position:sticky;top:0;z-index:20;background:var(--ink);border-bottom:3px solid var(--hot);padding:14px 18px;display:flex;align-items:center;gap:12px}
+.flame{width:34px;height:34px;flex:none}
+h1.brand{font-size:24px;letter-spacing:1px;font-weight:700}
+h1.brand span{color:var(--hot)}
+.spacer{flex:1}
+.gear{background:none;border:none;color:var(--faint);font-size:22px;cursor:pointer;padding:6px}
+.feed{max-width:680px;margin:0 auto;padding:22px 16px 80px}
+.tag{font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:2.5px;color:var(--hot);font-weight:700}
+.card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:22px;transition:transform .15s,border-color .15s}
+.card:active{transform:scale(.985)}
+.card:hover{border-color:var(--deep)}
+.card img,.card .gen{width:100%;height:200px;object-fit:cover;display:block;background:var(--panel2)}
+.card .pad{padding:16px 18px 18px}
+.card h2{font-size:22px;line-height:1.25;margin:8px 0 8px}
+.card p{font-style:italic;color:var(--soft);font-size:15px;line-height:1.5}
+.meta{font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:1px;color:var(--faint);margin-top:12px;text-transform:uppercase}
+.empty{padding:60px 20px;text-align:center;color:var(--faint);font-style:italic;line-height:1.7}
+/* settings drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s;z-index:30}
+.drawer{position:fixed;top:0;right:-290px;width:280px;height:100%;background:var(--panel);border-left:1px solid var(--line);z-index:31;transition:right .25s;padding:26px 22px;font-family:Helvetica,Arial,sans-serif}
+body.menu .scrim{opacity:1;pointer-events:auto}
+body.menu .drawer{right:0}
+.drawer h3{font-family:Georgia,serif;font-size:20px;margin-bottom:24px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px}
+.toggle{width:46px;height:26px;border-radius:13px;background:var(--line);border:none;position:relative;cursor:pointer;transition:background .2s}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--faint);transition:left .2s,background .2s}
+.toggle.on{background:var(--hot)}
+.toggle.on::after{left:23px;background:#fff}
+.note{font-size:12px;color:var(--faint);line-height:1.6;margin-top:22px}
+/* add-topic modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:50}
+body.adding .modal{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:14px 14px 0 0;width:100%;max-width:680px;padding:24px 22px 34px;font-family:Helvetica,Arial,sans-serif}
+.sheet h3{font-family:Georgia,serif;font-size:20px;margin-bottom:6px}
+.sheet .sub{font-size:12px;color:var(--faint);margin-bottom:18px}
+.sheet label{display:block;font-size:11px;letter-spacing:1.5px;color:var(--hot);font-weight:700;margin:14px 0 6px;text-transform:uppercase}
+.sheet input,.sheet textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:8px;color:var(--body);padding:12px;font-family:Georgia,serif;font-size:16px}
+.sheet textarea{resize:none;height:64px}
+.actions{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px}
+.btn.save{background:var(--hot);color:#fff}
+.btn.cancel{background:var(--line);color:var(--body)}
+.msg{font-size:13px;margin-top:12px;min-height:18px;color:var(--soft)}
+</style>
+</head>
+<body>
+<header class="top">
+  <svg class="flame" viewBox="0 0 64 64" aria-hidden="true">
+    <path d="M32 4 C36 16 48 20 48 36 a16 16 0 1 1 -32 0 C16 26 26 22 26 12 C29 16 31 18 32 22 Z" fill="#FF2E88"/>
+    <path d="M32 26 C34 32 40 34 40 42 a8 8 0 1 1 -16 0 C24 37 30 34 30 30 Z" fill="#0A0A0B" opacity=".85"/>
+    <path d="M32 32 C33 36 37 37 37 42 a5 5 0 1 1 -10 0 C27 39 31 36 32 32 Z" fill="#FF8FC2"/>
+  </svg>
+  <h1 class="brand">Daily <span>Fire</span></h1>
+  <div class="spacer"></div>
+  <button class="gear" id="addBtn" aria-label="Add topic" style="font-size:26px;color:var(--hot)">＋</button>
+  <button class="gear" id="gear" aria-label="Settings">⚙</button>
+</header>
+
+<main class="feed" id="feed">
+  <div class="empty">Lighting the archive…</div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer">
+  <h3>Settings</h3>
+  <div class="row"><span>Light mode</span><button class="toggle" id="themeToggle" aria-label="Toggle light mode"></button></div>
+  <div class="row"><span>Notifications</span><button class="toggle" id="notifToggle" aria-label="Toggle notifications"></button></div>
+  <div class="row"><span>Offline cache</span><span id="cacheCount" style="color:var(--faint)">—</span></div>
+  <p class="note">Essays arrive at 10:00 and 19:30 IST. Every essay you open is saved on this device for offline reading.</p>
+</aside>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3>Add a topic</h3>
+    <div class="sub">Joins the queue after your sheet topics. The agent reaches it in order.</div>
+    <label for="tTopic">Topic</label>
+    <input id="tTopic" placeholder="e.g. Roy Batty's tears in rain, Blade Runner"/>
+    <label for="tNotes">Note for the essayist (optional)</label>
+    <textarea id="tNotes" placeholder="e.g. mortality and memory — pair with Baldwin IV"></textarea>
+    <div class="actions">
+      <button class="btn cancel" id="tCancel">Cancel</button>
+      <button class="btn save" id="tSave">Add to queue</button>
+    </div>
+    <div class="msg" id="tMsg"></div>
+  </div>
+</div>
+
+<script>
+// ---------- theme ----------
+const root=document.documentElement, tBtn=document.getElementById('themeToggle');
+function applyTheme(t){root.setAttribute('data-theme',t);tBtn.classList.toggle('on',t==='light');
+  document.querySelector('meta[name=theme-color]').content = t==='light' ? '#FBF4F7' : '#0A0A0B';}
+applyTheme(localStorage.getItem('df-theme')||'dark');
+tBtn.onclick=()=>{const t=root.getAttribute('data-theme')==='light'?'dark':'light';localStorage.setItem('df-theme',t);applyTheme(t);};
+
+// ---------- drawer ----------
+document.getElementById('gear').onclick=()=>document.body.classList.add('menu');
+document.getElementById('scrim').onclick=()=>document.body.classList.remove('menu');
+
+// ---------- generative header for essays without film stills ----------
+function genArt(title,slot){
+  let h=0;for(const ch of title)h=(h*31+ch.charCodeAt(0))>>>0;
+  const hot=slot==='morning'?'#FF2E88':'#C2185B';
+  const waves=[...Array(4)].map((_,i)=>{
+    const y=40+((h>>(i*4))%60)+i*28;const amp=14+((h>>(i*3))%22);
+    return `<path d="M0 ${y} Q 170 ${y-amp} 340 ${y} T 680 ${y} V 220 H 0 Z" fill="${hot}" opacity="${0.10+i*0.09}"/>`;
+  }).join('');
+  const cx=80+(h%520), cy=46+((h>>7)%80), r=22+((h>>11)%26);
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 220"><rect width="680" height="220" fill="#120a10"/>${waves}<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${hot}" stroke-width="2.5" opacity=".9"/><circle cx="${cx}" cy="${cy}" r="${r*0.45}" fill="#FF8FC2" opacity=".8"/></svg>`);
+}
+
+// ---------- feed ----------
+const feed=document.getElementById('feed');
+async function load(){
+  try{
+    const idx=await (await fetch('/api/essays')).json();
+    if(!idx.ok||!idx.items.length){feed.innerHTML='<div class="empty">No essays yet.<br/>The first one arrives at the next scheduled slot — or trigger a test run.</div>';return;}
+    feed.innerHTML='';
+    let cached=0;
+    for(const it of idx.items){
+      try{
+        const e=await (await fetch(it.url)).json(); cached++;
+        const img=(e.images&&e.images[0])?e.images[0].url:genArt(e.title,e.slot);
+        const badge=e.slot==='morning'?'🔥 THE FIRE':'🕯️ THE EMBER';
+        const a=document.createElement('a');
+        a.className='card';
+        a.href='/read.html?u='+encodeURIComponent(it.url);
+        a.innerHTML=`<img class="${e.images&&e.images[0]?'':'gen'}" src="${img}" alt="" loading="lazy"/>
+          <div class="pad"><span class="tag">${badge}</span>
+          <h2>${e.title}</h2><p>${e.deck||''}</p>
+          <div class="meta">${e.dateStr} · ${e.readMins} min read</div></div>`;
+        feed.appendChild(a);
+      }catch{}
+    }
+    const cc=document.getElementById('cacheCount'); if(cc) cc.textContent=cached+' essays';
+  }catch{
+    feed.innerHTML='<div class="empty">Offline — and no cached archive yet.<br/>Open the app once with a connection.</div>';
+  }
+}
+load();
+
+// ---------- add topic ----------
+const modal=document.getElementById('modal'),tMsg=document.getElementById('tMsg');
+document.getElementById('addBtn').onclick=()=>{tMsg.textContent='';document.body.classList.add('adding');document.getElementById('tTopic').focus();};
+document.getElementById('tCancel').onclick=()=>document.body.classList.remove('adding');
+modal.onclick=(e)=>{if(e.target===modal)document.body.classList.remove('adding');};
+document.getElementById('tSave').onclick=async()=>{
+  const topic=document.getElementById('tTopic').value.trim();
+  const notes=document.getElementById('tNotes').value.trim();
+  if(!topic){tMsg.textContent='Topic is empty.';return;}
+  let pin=localStorage.getItem('df-pin');
+  if(!pin){pin=prompt('Enter your Daily Fire PIN (set as APP_PIN in Vercel):')||'';}
+  if(!pin)return;
+  tMsg.textContent='Adding…';
+  try{
+    const r=await fetch('/api/topics',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin,topic,notes})});
+    const d=await r.json();
+    if(d.ok){
+      localStorage.setItem('df-pin',pin);
+      tMsg.textContent='✓ Added — queue is now '+d.count+' app topics deep.';
+      document.getElementById('tTopic').value='';document.getElementById('tNotes').value='';
+      setTimeout(()=>document.body.classList.remove('adding'),900);
+    }else if(r.status===401){
+      localStorage.removeItem('df-pin');
+      tMsg.textContent='Wrong PIN — try again.';
+    }else{tMsg.textContent='Failed: '+(d.error||r.status);}
+  }catch{tMsg.textContent='Network error — are you offline?';}
+};
+
+// ---------- PWA ----------
+let swReg=null;
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r;syncNotifUI();});
+
+// ---------- push notifications ----------
+const nBtn=document.getElementById('notifToggle');
+function urlB64(b64){const pad='='.repeat((4-b64.length%4)%4);const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
+async function syncNotifUI(){
+  if(!swReg||!('PushManager' in window)){nBtn.style.opacity=.4;return;}
+  const sub=await swReg.pushManager.getSubscription();
+  nBtn.classList.toggle('on',!!sub&&Notification.permission==='granted');
+}
+nBtn.onclick=async()=>{
+  if(!swReg)return;
+  const existing=await swReg.pushManager.getSubscription();
+  if(existing){await existing.unsubscribe();syncNotifUI();return;}
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){syncNotifUI();return;}
+  const {key}=await (await fetch('/api/subscribe')).json();
+  if(!key){alert('Notifications not configured on the server yet (VAPID keys missing).');return;}
+  const sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(key)});
+  await fetch('/api/subscribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(sub)});
+  syncNotifUI();
+};
+</script>
+</body>
+</html>

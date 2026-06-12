@@ -3,5 +3,11 @@
   "version": "1.0.0",
   "description": "Twice-daily philosophical essay agent — researched, written, and delivered to your inbox",
   "type": "module",
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^0.27.0",
+    "web-push": "^3.6.7"
+  }
 }
