@@ -4,8 +4,8 @@ export default async function handler(req, res) {
     const result = await list({ prefix: "essays/" });
     const items = (result.blobs || [])
       .map((b) => ({ url: b.url, pathname: b.pathname }))
-      .sort((a, b) => (b.pathname < a.pathname ? -1 : 1));
-    res.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");
+      .sort((a, b) => (a.pathname < b.pathname ? 1 : -1)); // newest first
+    res.setHeader("cache-control", "no-store, max-age=0");
     return res.status(200).json({ ok: true, items });
   } catch (err) {
     console.error("Essays list error:", err);

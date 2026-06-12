@@ -137,7 +137,7 @@ function genArt(title,slot){
 const feed=document.getElementById('feed');
 async function load(){
   try{
-    const idx=await (await fetch('/api/essays')).json();
+    const idx=await (await fetch('/api/essays?t='+Date.now(),{cache:'no-store'})).json();
     if(!idx.ok||!idx.items.length){feed.innerHTML='<div class="empty">No essays yet.<br/>The first one arrives at the next scheduled slot — or trigger a test run.</div>';return;}
     feed.innerHTML='';
     let cached=0;
@@ -193,7 +193,7 @@ document.getElementById('tSave').onclick=async()=>{
 
 // ---------- PWA ----------
 let swReg=null;
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r;syncNotifUI();});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r;r.update();syncNotifUI();});
 
 // ---------- push notifications ----------
 const nBtn=document.getElementById('notifToggle');

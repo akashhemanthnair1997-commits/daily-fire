@@ -1,5 +1,5 @@
-const SHELL = "df-shell-v1";
-const CONTENT = "df-content-v1";
+const SHELL = "df-shell-v2";
+const CONTENT = "df-content-v2";
 const SHELL_FILES = ["/", "/index.html", "/read.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (e) => {
   // Archive index: network-first, fall back to cache offline.
   if (url.pathname === "/api/essays") {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: "no-store" })
         .then((res) => {
           const copy = res.clone();
           caches.open(CONTENT).then((c) => c.put(e.request, copy));
