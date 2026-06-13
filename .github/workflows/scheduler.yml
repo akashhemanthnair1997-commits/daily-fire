@@ -1,0 +1,32 @@
+name: Daily Fire scheduler
+
+on:
+  schedule:
+    - cron: "30 4 * * *"
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "slot to run (morning/evening)"
+        required: true
+        default: "morning"
+
+jobs:
+  fire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide slot
+        id: slot
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "slot=${{ github.event.inputs.slot }}" >> "$GITHUB_OUTPUT"
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" = "04" ]; then echo "slot=morning" >> "$GITHUB_OUTPUT"; else echo "slot=evening" >> "$GITHUB_OUTPUT"; fi
+          fi
+      - name: Trigger essay generation
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://daily-fire-gold.vercel.app/api/generate?slot=${{ steps.slot.outputs.slot }}" \
+            --max-time 290
