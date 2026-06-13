@@ -154,6 +154,7 @@ export default async function handler(req, res) {
 
     // 4. Images — TMDB for film/TV, Wikimedia/Met for everything else, [] -> abstract header.
     // If the research pass didn't emit an image_subject, get one via a dedicated quick call.
+    let subjectError = "";
     if (!meta.is_film_or_tv && !(meta.image_subject && meta.image_subject.trim())) {
       try {
         const subjMsg = await anthropic({
@@ -164,7 +165,15 @@ export default async function handler(req, res) {
         });
         const subj = textOf(subjMsg).trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
         if (subj) meta.image_subject = subj;
-      } catch {}
+      } catch (e) {
+        subjectError = String(e.message || e);
+      }
+      // Non-AI fallback: derive a search subject from the essay title / topic itself,
+      // so images can still resolve even if the subject call failed or returned nothing.
+      if (!meta.image_subject) {
+        const raw = (meta.essay_title || topic || "").split(/[—:,(]/)[0].trim();
+        if (raw) meta.image_subject = raw;
+      }
     }
     const images = await resolveImages(meta);
 
@@ -258,7 +267,7 @@ export default async function handler(req, res) {
       console.error("Blob save failed:", e.message);
     }
 
-    return res.status(200).json({ ok: true, slot, topic, words, emailId: sent.id, blobUrl, image_subject: meta.image_subject || "", image_count: images.length, is_film_or_tv: !!meta.is_film_or_tv });
+    return res.status(200).json({ ok: true, slot, topic, words, emailId: sent.id, blobUrl, image_subject: meta.image_subject || "", image_count: images.length, is_film_or_tv: !!meta.is_film_or_tv, subjectError });
   } catch (err) {
     // Failure notice to your inbox so a silent miss never happens.
     try {
