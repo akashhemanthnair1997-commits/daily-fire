@@ -178,6 +178,11 @@ export default async function handler(req, res) {
     try {
       const istNow = new Date(Date.now() + 5.5 * 3600 * 1000);
       const dateKey = istNow.toISOString().slice(0, 10);
+      // Manual test runs (&test=1) get a unique suffix so they never overwrite a real slot.
+      const isTest = req.query.test === "1";
+      const fileName = isTest
+        ? `essays/${dateKey}-${slot}-test-${Date.now()}.json`
+        : `essays/${dateKey}-${slot}.json`;
       const record = {
         key: `${dateKey}-${slot}`,
         title: meta.essay_title || topic,
@@ -189,10 +194,12 @@ export default async function handler(req, res) {
         readMins,
         words,
         images,
+        image_subject: meta.image_subject || "",
+        is_film_or_tv: !!meta.is_film_or_tv,
         essay,
         savedAt: new Date().toISOString(),
       };
-      const blob = await put(`essays/${dateKey}-${slot}.json`, JSON.stringify(record), {
+      const blob = await put(fileName, JSON.stringify(record), {
         access: "public",
         contentType: "application/json",
         addRandomSuffix: false,
@@ -238,7 +245,7 @@ export default async function handler(req, res) {
       console.error("Blob save failed:", e.message);
     }
 
-    return res.status(200).json({ ok: true, slot, topic, words, emailId: sent.id, blobUrl });
+    return res.status(200).json({ ok: true, slot, topic, words, emailId: sent.id, blobUrl, image_subject: meta.image_subject || "", image_count: images.length, is_film_or_tv: !!meta.is_film_or_tv });
   } catch (err) {
     // Failure notice to your inbox so a silent miss never happens.
     try {
