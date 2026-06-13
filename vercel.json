@@ -1,8 +1,4 @@
 {
-  "crons": [
-    { "path": "/api/generate?slot=morning", "schedule": "30 4 * * *" },
-    { "path": "/api/generate?slot=evening", "schedule": "0 14 * * *" }
-  ],
   "functions": {
     "api/generate.js": { "maxDuration": 300 }
   }

@@ -1,5 +1,6 @@
 import { ESSAY_SYSTEM, SLOT_TONES, RESEARCH_SYSTEM } from "../lib/prompt.js";
 import { renderEmail } from "../lib/template.js";
+import { resolveImages } from "../lib/images.js";
 import { put } from "@vercel/blob";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -47,40 +48,6 @@ function textOf(msg) {
     .filter((b) => b.type === "text")
     .map((b) => b.text)
     .join("\n");
-}
-
-async function tmdbImages(title, year) {
-  const key = process.env.TMDB_API_KEY;
-  if (!key || !title) return [];
-  try {
-    const q = new URLSearchParams({ api_key: key, query: title });
-    if (year) q.set("year", year);
-    let r = await fetch(`https://api.themoviedb.org/3/search/movie?${q}`);
-    let data = await r.json();
-    let hit = data.results?.[0];
-    let kind = "movie";
-    if (!hit) {
-      const q2 = new URLSearchParams({ api_key: key, query: title });
-      r = await fetch(`https://api.themoviedb.org/3/search/tv?${q2}`);
-      data = await r.json();
-      hit = data.results?.[0];
-      kind = "tv";
-    }
-    if (!hit) return [];
-    const imgRes = await fetch(
-      `https://api.themoviedb.org/3/${kind}/${hit.id}/images?api_key=${key}`
-    );
-    const imgs = await imgRes.json();
-    const backdrops = (imgs.backdrops || []).slice(0, 3);
-    const name = hit.title || hit.name || title;
-    return backdrops.map((b, i) => ({
-      url: `https://image.tmdb.org/t/p/w780${b.file_path}`,
-      alt: name,
-      caption: i === 0 ? `${name} — images via TMDB` : name,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 async function sendEmail({ subject, html }) {
@@ -162,7 +129,7 @@ export default async function handler(req, res) {
     const researchText = textOf(research);
 
     // Parse metadata block.
-    let meta = { is_film_or_tv: false, search_title: "", year: "", essay_title: topic, deck: "" };
+    let meta = { is_film_or_tv: false, search_title: "", year: "", image_subject: "", essay_title: topic, deck: "" };
     const m = researchText.match(/===META===\s*([\s\S]*?)\s*===END===/);
     if (m) {
       try {
@@ -185,8 +152,8 @@ export default async function handler(req, res) {
     });
     const essay = textOf(essayMsg).trim();
 
-    // 4. Images (films/TV only, via TMDB).
-    const images = meta.is_film_or_tv ? await tmdbImages(meta.search_title, meta.year) : [];
+    // 4. Images — TMDB for film/TV, Wikimedia/Met for everything else, [] -> abstract header.
+    const images = await resolveImages(meta);
 
     // 5. Render + send.
     const words = essay.split(/\s+/).length;
@@ -249,10 +216,18 @@ export default async function handler(req, res) {
             body: record.deck || topic,
             url: `/read.html?u=${encodeURIComponent(blobUrl)}`,
           });
+          const { del } = await import("@vercel/blob");
           await Promise.allSettled(
             subs.blobs.map(async (b) => {
               const sub = await (await fetch(b.url)).json();
-              return webpush.sendNotification(sub, payload);
+              try {
+                await webpush.sendNotification(sub, payload);
+              } catch (err) {
+                // 404/410 = subscription expired or unsubscribed; remove it.
+                if (err.statusCode === 404 || err.statusCode === 410) {
+                  try { await del(b.url); } catch {}
+                }
+              }
             })
           );
         } catch (e) {
