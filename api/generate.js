@@ -1,4 +1,4 @@
-import { ESSAY_SYSTEM, SLOT_TONES, RESEARCH_SYSTEM } from "../lib/prompt.js";
+import { ESSAY_SYSTEM, SLOT_TONES, RESEARCH_SYSTEM, IMAGE_SUBJECT_SYSTEM } from "../lib/prompt.js";
 import { renderEmail } from "../lib/template.js";
 import { resolveImages } from "../lib/images.js";
 import { put } from "@vercel/blob";
@@ -153,6 +153,19 @@ export default async function handler(req, res) {
     const essay = textOf(essayMsg).trim();
 
     // 4. Images — TMDB for film/TV, Wikimedia/Met for everything else, [] -> abstract header.
+    // If the research pass didn't emit an image_subject, get one via a dedicated quick call.
+    if (!meta.is_film_or_tv && !(meta.image_subject && meta.image_subject.trim())) {
+      try {
+        const subjMsg = await anthropic({
+          model: MODEL,
+          max_tokens: 60,
+          system: IMAGE_SUBJECT_SYSTEM,
+          messages: [{ role: "user", content: `Topic: "${topic}"${notes ? `\nNote: ${notes}` : ""}` }],
+        });
+        const subj = textOf(subjMsg).trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
+        if (subj) meta.image_subject = subj;
+      } catch {}
+    }
     const images = await resolveImages(meta);
 
     // 5. Render + send.

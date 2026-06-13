@@ -1,5 +1,5 @@
-const SHELL = "df-shell-v2";
-const CONTENT = "df-content-v2";
+const SHELL = "df-shell-v3";
+const CONTENT = "df-content-v3";
 const SHELL_FILES = ["/", "/index.html", "/read.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -17,8 +17,9 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Essay JSON blobs + TMDB images: cache-first (immutable once written).
-  if (url.pathname.includes("/essays/") || url.hostname === "image.tmdb.org") {
+  // Essay JSON blobs + all image hosts: cache-first (immutable once written).
+  const imageHosts = ["image.tmdb.org", "upload.wikimedia.org", "commons.wikimedia.org", "images.metmuseum.org"];
+  if (url.pathname.includes("/essays/") || imageHosts.includes(url.hostname)) {
     e.respondWith(
       caches.open(CONTENT).then(async (c) => {
         const hit = await c.match(e.request);
