@@ -64,6 +64,10 @@ body.adding .modal{display:flex}
 .btn.save{background:var(--hot);color:#fff}
 .btn.cancel{background:var(--line);color:var(--body)}
 .msg{font-size:13px;margin-top:12px;min-height:18px;color:var(--soft)}
+/* update bar */
+.update-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--hot);color:#fff;padding:14px 18px;align-items:center;justify-content:space-between;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:500;gap:12px}
+.update-bar.show{display:flex}
+.update-bar button{background:#fff;color:var(--hot);border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;flex:none}
 </style>
 </head>
 <body>
@@ -91,6 +95,11 @@ body.adding .modal{display:flex}
   <div class="row"><span>Offline cache</span><span id="cacheCount" style="color:var(--faint)">—</span></div>
   <p class="note">Essays arrive at 10:00 and 19:30 IST. Every essay you open is saved on this device for offline reading.</p>
 </aside>
+
+<div class="update-bar" id="updateBar">
+  <span>New version ready — tap to refresh</span>
+  <button onclick="location.reload()">Refresh</button>
+</div>
 
 <div class="modal" id="modal">
   <div class="sheet">
@@ -201,7 +210,16 @@ document.getElementById('tSave').onclick=async()=>{
 
 // ---------- PWA ----------
 let swReg=null;
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r;r.update();syncNotifUI();});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r=>{
+  swReg=r; r.update(); syncNotifUI();
+  r.addEventListener('updatefound',()=>{
+    const nw=r.installing;
+    nw.addEventListener('statechange',()=>{
+      if(nw.state==='installed'&&navigator.serviceWorker.controller)
+        document.getElementById('updateBar').classList.add('show');
+    });
+  });
+});
 
 // ---------- push notifications ----------
 const nBtn=document.getElementById('notifToggle');

@@ -242,8 +242,9 @@ export default async function handler(req, res) {
           const subs = await list({ prefix: "push/", limit: 100 });
           const payload = JSON.stringify({
             title: `${prefix} ${record.title}`,
-            body: record.deck || topic,
+            body: record.deck || record.title,
             url: `/read.html?u=${encodeURIComponent(blobUrl)}`,
+            image: record.images?.[0]?.url || undefined,
           });
           const { del } = await import("@vercel/blob");
           await Promise.allSettled(

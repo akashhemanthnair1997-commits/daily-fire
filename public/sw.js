@@ -1,5 +1,5 @@
-const SHELL = "df-shell-v4";
-const CONTENT = "df-content-v4";
+const SHELL = "df-shell-v5";
+const CONTENT = "df-content-v5";
 const SHELL_FILES = ["/", "/index.html", "/read.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -55,14 +55,15 @@ self.addEventListener("fetch", (e) => {
 self.addEventListener("push", (e) => {
   let data = { title: "Daily Fire", body: "A new essay has arrived.", url: "/" };
   try { data = { ...data, ...e.data.json() }; } catch {}
-  e.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      data: { url: data.url },
-    })
-  );
+  const opts = {
+    body: data.body,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: data.url },
+    requireInteraction: false,
+  };
+  if (data.image) opts.image = data.image;
+  e.waitUntil(self.registration.showNotification(data.title, opts));
 });
 
 self.addEventListener("notificationclick", (e) => {
