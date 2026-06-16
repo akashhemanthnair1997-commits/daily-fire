@@ -1,5 +1,5 @@
-const SHELL = "df-shell-v3";
-const CONTENT = "df-content-v3";
+const SHELL = "df-shell-v4";
+const CONTENT = "df-content-v4";
 const SHELL_FILES = ["/", "/index.html", "/read.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {

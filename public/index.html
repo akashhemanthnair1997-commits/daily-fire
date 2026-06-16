@@ -139,11 +139,15 @@ async function load(){
   try{
     const idx=await (await fetch('/api/essays?t='+Date.now(),{cache:'no-store'})).json();
     if(!idx.ok||!idx.items.length){feed.innerHTML='<div class="empty">No essays yet.<br/>The first one arrives at the next scheduled slot — or trigger a test run.</div>';return;}
+    // filter out test essays (pathnames containing "-test-")
+    const realItems=idx.items.filter(it=>!it.pathname.includes('-test-'));
+    if(!realItems.length){feed.innerHTML='<div class="empty">No essays yet.<br/>The first one arrives at the next scheduled slot — or trigger a test run.</div>';return;}
     feed.innerHTML='';
-    let cached=0;
-    for(const it of idx.items){
+    let loaded=0,failed=0;
+    for(const it of realItems){
       try{
-        const e=await (await fetch(it.url)).json(); cached++;
+        const e=await (await fetch(it.url)).json();
+        loaded++;
         const img=(e.images&&e.images[0])?e.images[0].url:genArt(e.title,e.slot);
         const badge=e.slot==='morning'?'🔥 THE FIRE':'🕯️ THE EMBER';
         const a=document.createElement('a');
@@ -154,9 +158,13 @@ async function load(){
           <h2>${e.title}</h2><p>${e.deck||''}</p>
           <div class="meta">${e.dateStr} · ${e.readMins} min read</div></div>`;
         feed.appendChild(a);
-      }catch{}
+      }catch(err){
+        console.error('Essay load failed',it.pathname,err);
+        failed++;
+      }
     }
-    const cc=document.getElementById('cacheCount'); if(cc) cc.textContent=cached+' essays';
+    if(loaded===0){feed.innerHTML='<div class="empty">Essays exist but could not be loaded.<br/>Check console for details — or try a hard refresh.</div>';}
+    const cc=document.getElementById('cacheCount'); if(cc) cc.textContent=loaded+' essays';
   }catch{
     feed.innerHTML='<div class="empty">Offline — and no cached archive yet.<br/>Open the app once with a connection.</div>';
   }
