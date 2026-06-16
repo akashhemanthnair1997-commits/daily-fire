@@ -10,6 +10,12 @@ on:
         description: "slot to run (morning/evening)"
         required: true
         default: "morning"
+      test:
+        description: "test run? (writes test file, won't overwrite real slot)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
 jobs:
   fire:
@@ -26,7 +32,9 @@ jobs:
           fi
       - name: Trigger essay generation
         run: |
+          TEST_PARAM=""
+          if [ "${{ github.event.inputs.test }}" = "true" ]; then TEST_PARAM="&test=1"; fi
           curl -sS -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://daily-fire-gold.vercel.app/api/generate?slot=${{ steps.slot.outputs.slot }}" \
+            "https://daily-fire-gold.vercel.app/api/generate?slot=${{ steps.slot.outputs.slot }}${TEST_PARAM}" \
             --max-time 290
