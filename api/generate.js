@@ -68,6 +68,54 @@ async function sendEmail({ subject, html }) {
   return res.json();
 }
 
+// ---------- published-topic dedup ----------
+
+const norm = (t) => (t || "").trim().toLowerCase();
+
+async function getPublishedTopics() {
+  try {
+    const { list } = await import("@vercel/blob");
+    // Try the fast index first.
+    const { blobs: idx } = await list({ prefix: "queue/published.json", limit: 1 });
+    if (idx.length) {
+      const data = await (await fetch(idx[0].url, { cache: "no-store" })).json();
+      if (Array.isArray(data)) return new Set(data.map(norm));
+    }
+    // Bootstrap on first run: derive from existing real essays.
+    const { blobs: essays } = await list({ prefix: "essays/", limit: 500 });
+    const published = new Set();
+    await Promise.all(
+      essays
+        .filter((b) => !b.pathname.includes("-test-"))
+        .map(async (b) => {
+          try {
+            const e = await (await fetch(b.url, { cache: "no-store" })).json();
+            if (e.topic) published.add(norm(e.topic));
+          } catch {}
+        })
+    );
+    // Persist so next run is fast.
+    await put("queue/published.json", JSON.stringify([...published]), {
+      access: "public", contentType: "application/json",
+      addRandomSuffix: false, allowOverwrite: true,
+    });
+    return published;
+  } catch {
+    return new Set();
+  }
+}
+
+async function markTopicPublished(topic) {
+  try {
+    const published = await getPublishedTopics();
+    published.add(norm(topic));
+    await put("queue/published.json", JSON.stringify([...published]), {
+      access: "public", contentType: "application/json",
+      addRandomSuffix: false, allowOverwrite: true,
+    });
+  } catch {}
+}
+
 // ---------- handler ----------
 
 export default async function handler(req, res) {
@@ -110,6 +158,21 @@ export default async function handler(req, res) {
     const index =
       ((daySerial - launchSerial) * 2 + (slot === "evening" ? 1 : 0)) % topics.length;
     const { topic, notes } = topics[Math.max(0, index)];
+
+    // 1b. Skip if this topic was already published — email notice, exit clean.
+    if (req.query.test !== "1") {
+      const published = await getPublishedTopics();
+      if (published.has(norm(topic))) {
+        await sendEmail({
+          subject: `⏭ Daily Fire — skipped duplicate: "${topic}"`,
+          html: `<p style="font-family:Georgia,serif;font-size:16px;color:#241019">
+            The next topic in queue (<strong>${topic}</strong>) has already been published.<br/><br/>
+            Add new topics to your Google Sheet or via the app ＋ button and the next run will pick them up automatically.
+          </p>`,
+        });
+        return res.status(200).json({ ok: true, skipped: true, reason: "already_published", topic });
+      }
+    }
 
     // 2. Research pass — Claude with live web search.
     const research = await anthropic({
@@ -228,6 +291,9 @@ export default async function handler(req, res) {
         allowOverwrite: true,
       });
       blobUrl = blob.url;
+
+      // Mark topic consumed so it never repeats.
+      if (req.query.test !== "1") await markTopicPublished(topic);
 
       // 7. Push notifications to subscribed devices.
       if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
